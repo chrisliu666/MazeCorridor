@@ -577,24 +577,27 @@ h1 {
 
 .modal-close {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 32px;
-  height: 32px;
+  top: 8px;
+  right: 8px;
+  width: 36px;
+  height: 36px;
   min-height: auto;
   padding: 0;
-  border: none;
-  background: transparent;
+  border: 1px solid rgba(143, 115, 80, 0.25);
+  border-radius: 999px;
+  background: #fffaf1;
   box-shadow: none;
-  font-size: 22px;
-  line-height: 32px;
-  color: #b8a898;
+  font-size: 20px;
+  line-height: 36px;
+  color: #9a8a78;
   cursor: pointer;
-  transition: color 160ms ease;
+  z-index: 10;
+  transition: color 160ms ease, background 160ms ease;
 }
 
 .modal-close:hover {
-  color: var(--ink);
+  color: #5a4a38;
+  background: #fff5e8;
   transform: none;
 }
 

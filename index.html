@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>迷宫回廊 | MazeCorridor</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="game-area" aria-label="迷宫游戏区">
+        <header class="brand">
+          <div>
+            <p class="eyebrow">MazeCorridor</p>
+            <h1>迷宫回廊</h1>
+          </div>
+          <div class="status-strip" aria-live="polite">
+            <span id="timer">00:00</span>
+            <span id="mistakes">错误 0/3</span>
+          </div>
+        </header>
+
+        <div id="mazeContainer" class="maze-container" aria-label="迷宫棋盘"></div>
+        <p id="mazeStatus" class="maze-status">选择通道前进</p>
+
+        <div class="seed-row">
+          <label for="seedInput">种子码</label>
+          <input id="seedInput" type="text" autocomplete="off" spellcheck="false" />
+          <button id="loadSeedBtn" type="button">载入</button>
+        </div>
+      </section>
+
+      <aside class="control-panel" aria-label="游戏控制">
+        <section class="mascot-panel">
+          <img class="mascot-image" src="./assets/mascot-reference.svg" alt="Ada" />
+          <div>
+            <p class="panel-title">Ada</p>
+            <p id="mascotLine">选一个方向，我陪你走到底。</p>
+          </div>
+        </section>
+
+        <section class="guide-panel" aria-label="操作说明">
+          <p class="panel-title">操作说明</p>
+          <ul>
+            <li><strong>点击通道</strong><span>在岔路口点击可选方向前进</span></li>
+            <li><strong>死路</strong><span>走到死路算 1 次错误，共 3 次机会</span></li>
+            <li><strong>出口</strong><span>找到正确的路走出迷宫即为胜利</span></li>
+            <li><strong>重置</strong><span>回到迷宫入口重新开始</span></li>
+            <li><strong>种子码</strong><span>输入种子可重复同一迷宫</span></li>
+          </ul>
+        </section>
+
+        <section class="settings">
+          <label for="difficulty">难度</label>
+          <select id="difficulty">
+            <option value="easy">简单</option>
+            <option value="medium" selected>普通</option>
+            <option value="hard">困难</option>
+            <option value="expert">专家</option>
+          </select>
+        </section>
+
+        <section class="actions" aria-label="操作按钮">
+          <button id="newGameBtn" type="button">新迷宫</button>
+          <button id="resetBtn" type="button">重置</button>
+          <button id="trailBtn" type="button">显示轨迹</button>
+          <button id="autoBtn" type="button">你自己走</button>
+          <button id="againBtn" class="hidden" type="button">再来一局</button>
+        </section>
+
+        <section class="legend">
+          <span><i class="dot path-legend"></i>通道</span>
+          <span><i class="dot wall-legend"></i>墙壁</span>
+          <span><i class="dot entrance-legend"></i>入口</span>
+          <span><i class="dot player-legend"></i>当前位置</span>
+          <span><i class="dot exit-legend"></i>出口</span>
+        </section>
+
+        <section class="records">
+          <div class="records-head">
+            <p class="panel-title">对局记录</p>
+            <button id="clearRecordsBtn" type="button">清空</button>
+          </div>
+          <ol id="recordsList"></ol>
+        </section>
+      </aside>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <div id="resultModal" class="modal hidden">
+      <div class="modal-overlay"></div>
+      <div class="modal-card">
+        <div id="modalIcon" class="modal-icon"></div>
+        <h2 id="modalTitle" class="modal-title"></h2>
+        <div id="modalBody" class="modal-body"></div>
+        <button id="modalBtn" type="button" class="modal-btn"></button>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

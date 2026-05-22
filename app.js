@@ -43,6 +43,7 @@
     modalTitle: document.getElementById("modalTitle"),
     modalBody: document.getElementById("modalBody"),
     modalBtn: document.getElementById("modalBtn"),
+    modalClose: document.getElementById("modalClose"),
   };
 
   const state = {
@@ -120,6 +121,9 @@
     els.modalBtn.addEventListener("click", function () {
       els.resultModal.classList.add("hidden");
       startGame();
+    });
+    els.modalClose.addEventListener("click", function () {
+      els.resultModal.classList.add("hidden");
     });
     els.loadSeedBtn.addEventListener("click", () => {
       const seed = els.seedInput.value.trim();

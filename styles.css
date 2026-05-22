@@ -575,6 +575,29 @@ h1 {
   padding: 10px 24px;
 }
 
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  min-height: auto;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  font-size: 22px;
+  line-height: 32px;
+  color: #b8a898;
+  cursor: pointer;
+  transition: color 160ms ease;
+}
+
+.modal-close:hover {
+  color: var(--ink);
+  transform: none;
+}
+
 /* ===== Animations ===== */
 
 @keyframes clickablePulse {

@@ -202,6 +202,7 @@
     state.mistakes = 0;
     els.mistakes.textContent = `错误 0/3`;
     state.animating = false;
+    restartTimer();
     els.mazeStatus.textContent = "重置中";
 
     const startEl = getRenderCell(state.entranceRow, state.entranceCol);

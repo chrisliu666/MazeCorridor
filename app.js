@@ -68,7 +68,7 @@
     animTimer: null,
     pauseOffset: 0,
     trail: [],
-    showTrail: false,
+    showTrail: true,
     records: loadJson(STORAGE_RECORDS, []),
     seedStore: loadJson(STORAGE_SEEDS, {}),
   };
@@ -150,8 +150,8 @@
     state.mistakes = 0;
     els.mistakes.textContent = `错误 0/3`;
     state.trail = [];
-    state.showTrail = false;
-    els.trailBtn.textContent = "显示轨迹";
+    state.showTrail = true;
+    els.trailBtn.textContent = "隐藏轨迹";
     state.ended = false;
     state.animating = false;
     state.startedAt = Date.now();

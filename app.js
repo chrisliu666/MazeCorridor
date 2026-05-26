@@ -454,21 +454,40 @@
       grid[nr][nc].walls[d.opp] = false;
     }
 
-    function carve(row, col) {
-      grid[row][col].visited = true;
-      const shuffled = shuffle(dirs, rng);
-      for (const { dr, dc, wall, opp } of shuffled) {
-        const nr = row + dr;
-        const nc = col + dc;
+    // Iterative DFS using explicit stack (avoids recursion depth limits)
+    grid[entRow][entCol].visited = true;
+    var stack = [{ row: entRow, col: entCol }];
+    var DI = [0, 1, 2, 3];
+
+    while (stack.length > 0) {
+      var cur = stack[stack.length - 1];
+      var row = cur.row;
+      var col = cur.col;
+
+      // Collect unvisited neighbors
+      var candidates = [];
+      for (var di = 0; di < 4; di++) {
+        var d = dirs[DI[di]];
+        var nr = row + d.dr;
+        var nc = col + d.dc;
         if (nr >= 0 && nr < height && nc >= 0 && nc < width && !grid[nr][nc].visited) {
-          grid[row][col].walls[wall] = false;
-          grid[nr][nc].walls[opp] = false;
-          carve(nr, nc);
+          candidates.push({ nr: nr, nc: nc, wall: d.wall, opp: d.opp });
         }
+      }
+
+      if (candidates.length === 0) {
+        // Dead end — backtrack
+        stack.pop();
+      } else {
+        // Pick a random unvisited neighbor
+        var chosen = candidates[Math.floor(rng() * candidates.length)];
+        grid[row][col].walls[chosen.wall] = false;
+        grid[chosen.nr][chosen.nc].walls[chosen.opp] = false;
+        grid[chosen.nr][chosen.nc].visited = true;
+        stack.push({ row: chosen.nr, col: chosen.nc });
       }
     }
 
-    carve(entRow, entCol);
     return grid;
   }
 
@@ -606,7 +625,7 @@
   }
 
   function animatePath(pathCells, endType) {
-    let step = 1; // skip current position (index 0)
+    var step = 1; // skip current position (index 0)
 
     function doStep() {
       if (step >= pathCells.length) {
@@ -614,12 +633,18 @@
         return;
       }
 
-      const cell = pathCells[step];
-      const el = getRenderCell(cell.row, cell.col);
+      var cell = pathCells[step];
+      var prev = pathCells[step - 1];
+      var el = getRenderCell(cell.row, cell.col);
       if (el) {
         el.classList.remove("maze-player", "maze-clickable");
-        el.classList.add("maze-traversed");
+        el.classList.add("maze-trail");
+        var dir = getDirection(cell.row - prev.row, cell.col - prev.col);
+        if (dir !== -1) el.classList.add("maze-trail-dir" + dir);
       }
+      // Mark passage between cells
+      var pel = getPassageCell(prev.row, prev.col, cell.row, cell.col);
+      if (pel) pel.classList.add("maze-trail");
 
       step++;
       state.animTimer = setTimeout(doStep, 60);

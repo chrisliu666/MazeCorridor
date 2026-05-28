@@ -90,6 +90,15 @@
     bindActions();
     renderRecords();
     startGame();
+    // Keyboard arrow key support for direction selection
+    document.addEventListener("keydown", function (e) {
+      var keyDir = { ArrowUp: 0, ArrowRight: 1, ArrowDown: 2, ArrowLeft: 3 }[e.key];
+      if (keyDir !== undefined) {
+        e.preventDefault();
+        onArrowKey(keyDir);
+      }
+    });
+
     // Pause timer when page is hidden
     document.addEventListener("visibilitychange", function () {
       if (state.ended) return;
@@ -110,6 +119,16 @@
     els.mazeContainer.innerHTML = "";
     // Grid is rebuilt each startGame, so we only attach the click listener once
     els.mazeContainer.addEventListener("click", onMazeClick);
+  }
+
+  function onArrowKey(dir) {
+    if (state.ended || state.animating) return;
+    var nr = state.playerRow + DR[dir];
+    var nc = state.playerCol + DC[dir];
+    var el = getRenderCell(nr, nc);
+    if (el && el.classList.contains("maze-clickable")) {
+      chooseDirection(dir);
+    }
   }
 
   function bindActions() {

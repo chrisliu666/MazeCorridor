@@ -2,7 +2,6 @@
   "use strict";
 
   const STORAGE_RECORDS = "maze-corridor.records";
-  const STORAGE_SEEDS = "maze-corridor.seeds";
 
   const DR = [-1, 0, 1, 0]; // up, right, down, left
   const DC = [0, 1, 0, -1];
@@ -70,7 +69,6 @@
     trail: [],
     showTrail: true,
     records: loadJson(STORAGE_RECORDS, []),
-    seedStore: loadJson(STORAGE_SEEDS, {}),
   };
 
   const mascotLines = {
@@ -163,7 +161,19 @@
 
   async function startGame(requestedSeed) {
     clearAnimTimer();
-    state.difficulty = els.difficulty.value;
+    if (requestedSeed) {
+      // 种子码自带难度前缀（如 MEDIUM-20260522-A3F8E2），载入时优先采用它，
+      // 否则同一种子码因下拉框难度不同会生成不同的迷宫，无法复现。
+      const prefix = (requestedSeed.split("-")[0] || "").toLowerCase();
+      if (difficultyMazeSize[prefix]) {
+        state.difficulty = prefix;
+        els.difficulty.value = prefix;
+      } else {
+        state.difficulty = els.difficulty.value;
+      }
+    } else {
+      state.difficulty = els.difficulty.value;
+    }
     state.seed = requestedSeed || createSeed(state.difficulty);
     els.resultModal.classList.add("hidden");
     state.mistakes = 0;
@@ -173,6 +183,8 @@
     els.trailBtn.textContent = "隐藏轨迹";
     state.ended = false;
     state.animating = false;
+    // 若上一次自动寻路动画被中途打断，按钮会保持禁用，这里恢复
+    els.autoBtn.disabled = false;
     state.startedAt = Date.now();
     els.againBtn.classList.add("hidden");
     els.seedInput.value = state.seed;
@@ -225,6 +237,8 @@
     state.mistakes = 0;
     els.mistakes.textContent = `错误 0/3`;
     state.animating = false;
+    // 重置同样恢复自动寻路按钮（可能在动画中被打断）
+    els.autoBtn.disabled = false;
     restartTimer();
     els.mazeStatus.textContent = "重置中";
 
@@ -568,6 +582,36 @@
     }
 
     applyBoundaryOpenings();
+    placeExitArrow();
+  }
+
+  /* ===== Exit Arrow (outside maze) ===== */
+
+  function placeExitArrow() {
+    const container = els.mazeContainer;
+    const old = container.querySelector(".maze-exit-arrow");
+    if (old) old.remove();
+
+    const arrow = document.createElement("div");
+    arrow.className = "maze-exit-arrow";
+
+    const { exitRow, exitCol, mazeHeight, mazeWidth, renderRows, renderCols } = state;
+    // 出口格中心在渲染网格中的百分比位置（2*idx+1 为格起点，+0.5 为格中心）
+    if (exitRow === 0) {
+      arrow.classList.add("dir-up");
+      arrow.style.left = ((2 * exitCol + 1.5) / renderCols) * 100 + "%";
+    } else if (exitRow === mazeHeight - 1) {
+      arrow.classList.add("dir-down");
+      arrow.style.left = ((2 * exitCol + 1.5) / renderCols) * 100 + "%";
+    } else if (exitCol === 0) {
+      arrow.classList.add("dir-left");
+      arrow.style.top = ((2 * exitRow + 1.5) / renderRows) * 100 + "%";
+    } else {
+      arrow.classList.add("dir-right");
+      arrow.style.top = ((2 * exitRow + 1.5) / renderRows) * 100 + "%";
+    }
+
+    container.appendChild(arrow);
   }
 
   /* ===== Click Handling ===== */
@@ -657,13 +701,12 @@
       var el = getRenderCell(cell.row, cell.col);
       if (el) {
         el.classList.remove("maze-player", "maze-clickable");
-        el.classList.add("maze-trail");
-        var dir = getDirection(cell.row - prev.row, cell.col - prev.col);
-        if (dir !== -1) el.classList.add("maze-trail-dir" + dir);
+        // 动画阶段用临时高亮，不直接写入轨迹；到达岔路/出口时再由 addToTrail 落轨迹
+        el.classList.add("maze-traversed");
       }
       // Mark passage between cells
       var pel = getPassageCell(prev.row, prev.col, cell.row, cell.col);
-      if (pel) pel.classList.add("maze-trail");
+      if (pel) pel.classList.add("maze-traversed");
 
       step++;
       state.animTimer = setTimeout(doStep, 60);
@@ -675,11 +718,16 @@
   function onPathComplete(pathCells, endType) {
     const last = pathCells[pathCells.length - 1];
 
-    // Clear traversed markers (from index 1 onward)
+    // Clear traversed markers (from index 1 onward), including passages
     function clearTraced() {
       for (let i = 1; i < pathCells.length; i++) {
         const el = getRenderCell(pathCells[i].row, pathCells[i].col);
         if (el) el.classList.remove("maze-traversed");
+        const pel = getPassageCell(
+          pathCells[i - 1].row, pathCells[i - 1].col,
+          pathCells[i].row, pathCells[i].col
+        );
+        if (pel) pel.classList.remove("maze-traversed");
       }
     }
 
@@ -690,6 +738,7 @@
       state.playerRow = last.row;
       state.playerCol = last.col;
       state.animating = false;
+      addToTrail(pathCells);
       clearTraced();
       finishGame("成功");
       return;
@@ -794,19 +843,36 @@
           el.classList.add("maze-trail-dir" + cell.dir);
         }
       }
-      // Passage from previous cell
+      // Passage from previous cell；首格由 dir 反推出发格（轨迹不存起点岔路口）
+      var prev = null;
       if (i > 0) {
-        var prev = state.trail[i - 1];
+        prev = state.trail[i - 1];
+      } else if (cell.dir !== undefined && cell.dir !== -1) {
+        prev = { row: cell.row - DR[cell.dir], col: cell.col - DC[cell.dir] };
+      }
+      if (prev) {
         var pel = getPassageCell(prev.row, prev.col, cell.row, cell.col);
         if (pel) pel.classList.add("maze-trail");
       }
     }
   }
 
+  function clearTrailClasses(el) {
+    if (!el) return;
+    // 同时清掉方向箭头 class，避免格子复用后残留旧箭头
+    el.classList.remove(
+      "maze-trail",
+      "maze-trail-dir0",
+      "maze-trail-dir1",
+      "maze-trail-dir2",
+      "maze-trail-dir3"
+    );
+  }
+
   function clearTrailMarkers() {
     var marked = els.mazeContainer.querySelectorAll(".maze-trail");
     for (var i = 0; i < marked.length; i++) {
-      marked[i].classList.remove("maze-trail");
+      clearTrailClasses(marked[i]);
     }
   }
 
@@ -831,15 +897,21 @@
         if (state.showTrail) {
           for (var k = 0; k < removed.length; k++) {
             var rc = removed[k];
-            var rel = getRenderCell(rc.row, rc.col);
-            if (rel) rel.classList.remove("maze-trail");
-            // Also remove passage markers
-            if (k > 0) {
-              var rpel = getPassageCell(removed[k-1].row, removed[k-1].col, rc.row, rc.col);
-              if (rpel) rpel.classList.remove("maze-trail");
-            }
+            clearTrailClasses(getRenderCell(rc.row, rc.col));
+            // Also remove passage markers; k=0 时前驱是回访点本身
+            var prevCell = k > 0 ? removed[k - 1] : state.trail[existingIdx];
+            var rpel = getPassageCell(prevCell.row, prevCell.col, rc.row, rc.col);
+            if (rpel) clearTrailClasses(rpel);
+          }
+          // 回访点按新进入方向更新箭头
+          var revisitEl = getRenderCell(cell.row, cell.col);
+          if (revisitEl) {
+            clearTrailClasses(revisitEl);
+            revisitEl.classList.add("maze-trail");
+            if (dir !== -1) revisitEl.classList.add("maze-trail-dir" + dir);
           }
         }
+        state.trail[existingIdx].dir = dir;
       } else {
         state.trail.push({ row: cell.row, col: cell.col, dir: dir });
         if (state.showTrail) {

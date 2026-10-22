@@ -18,9 +18,15 @@
   box-sizing: border-box;
 }
 
+html,
+body {
+  height: 100%;
+}
+
 body {
   margin: 0;
-  min-height: 100vh;
+  /* 游戏单窗口布局：页面本身不滚动，超高内容在面板内滚动 */
+  overflow: hidden;
   color: var(--ink);
   background:
     radial-gradient(circle at 18% 12%, rgba(255, 225, 234, 0.75), transparent 28%),
@@ -65,8 +71,11 @@ button:disabled {
   grid-template-columns: minmax(620px, 760px) 360px;
   gap: 24px;
   max-width: 1180px;
+  height: 100vh;
   margin: 0 auto;
   padding: 28px;
+  align-content: start;
+  overflow: hidden;
 }
 
 .game-area,
@@ -125,7 +134,9 @@ h1 {
 .maze-container {
   display: grid;
   gap: 0;
-  width: min(100%, 680px);
+  position: relative;
+  /* 高度受限时自动缩小迷宫，保证不出现页面滚动条 */
+  width: min(100%, 680px, calc(100vh - 296px));
   aspect-ratio: 1;
   margin: 0 auto;
   background: #5b4a32;
@@ -163,16 +174,45 @@ h1 {
   background: #fef6da;
 }
 
-.maze-path.maze-exit::after {
-  content: "E";
+/* 出口外部小箭头：指向迷宫外，正对出口通道 */
+.maze-exit-arrow {
   position: absolute;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 14px;
-  font-weight: 700;
-  color: #b87c1e;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  width: 0;
+  height: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.maze-exit-arrow.dir-up {
+  top: -9px;
+  transform: translateX(-50%);
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 10px solid #b87c1e;
+}
+
+.maze-exit-arrow.dir-down {
+  bottom: -9px;
+  transform: translateX(-50%);
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 10px solid #b87c1e;
+}
+
+.maze-exit-arrow.dir-left {
+  left: -9px;
+  transform: translateY(-50%);
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-right: 10px solid #b87c1e;
+}
+
+.maze-exit-arrow.dir-right {
+  right: -9px;
+  transform: translateY(-50%);
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-left: 10px solid #b87c1e;
 }
 
 .maze-path.maze-player {
@@ -305,6 +345,9 @@ h1 {
   flex-direction: column;
   gap: 16px;
   padding: 18px;
+  /* 面板超高时内部滚动，避免拖出窗口产生页面滚动条 */
+  max-height: 100vh;
+  overflow-y: auto;
 }
 
 .mascot-panel,

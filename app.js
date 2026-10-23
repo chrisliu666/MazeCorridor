@@ -97,18 +97,18 @@
       }
     });
 
-    // Pause timer when page is hidden
+    // Pause timer when page is hidden（幂等：重复事件不会叠加 interval）
     document.addEventListener("visibilitychange", function () {
       if (state.ended) return;
       if (document.hidden) {
+        if (state.timerId === null) return;
         state.pauseOffset = Date.now() - state.startedAt;
         window.clearInterval(state.timerId);
         state.timerId = null;
       } else {
+        if (state.timerId !== null) return;
         state.startedAt = Date.now() - state.pauseOffset;
-        state.timerId = window.setInterval(function () {
-          els.timer.textContent = formatTime(elapsedSeconds());
-        }, 500);
+        startTimerLoop();
       }
     });
   }
@@ -255,7 +255,12 @@
     state.ended = true;
     clearAnimTimer();
     clearClickableHighlights();
-    window.clearInterval(state.timerId);
+    // 封盘：停掉计时并冻结显示，防止残留 interval 继续走
+    if (state.timerId !== null) {
+      window.clearInterval(state.timerId);
+      state.timerId = null;
+    }
+    els.timer.textContent = formatTime(elapsedSeconds());
 
     const seconds = elapsedSeconds();
     state.records.unshift({
@@ -373,10 +378,7 @@
       // Add to trail
       var dir = getDirection(cell.row - prev.row, cell.col - prev.col);
       state.trail.push({ row: cell.row, col: cell.col, dir: dir });
-      if (el) {
-        el.classList.add("maze-trail");
-        el.classList.add("maze-trail-dir" + dir);
-      }
+      if (el) el.classList.add("maze-trail");
       // passage
       var pel = getPassageCell(prev.row, prev.col, cell.row, cell.col);
       if (pel) pel.classList.add("maze-trail");
@@ -923,12 +925,7 @@
     for (var i = 0; i < state.trail.length; i++) {
       var cell = state.trail[i];
       var el = getRenderCell(cell.row, cell.col);
-      if (el) {
-        el.classList.add("maze-trail");
-        if (cell.dir !== undefined) {
-          el.classList.add("maze-trail-dir" + cell.dir);
-        }
-      }
+      if (el) el.classList.add("maze-trail");
       // Passage from previous cell；首格由 dir 反推出发格（轨迹不存起点岔路口）
       var prev = null;
       if (i > 0) {
@@ -945,14 +942,7 @@
 
   function clearTrailClasses(el) {
     if (!el) return;
-    // 同时清掉方向箭头 class，避免格子复用后残留旧箭头
-    el.classList.remove(
-      "maze-trail",
-      "maze-trail-dir0",
-      "maze-trail-dir1",
-      "maze-trail-dir2",
-      "maze-trail-dir3"
-    );
+    el.classList.remove("maze-trail");
   }
 
   function clearTrailMarkers() {
@@ -989,12 +979,11 @@
             var rpel = getPassageCell(prevCell.row, prevCell.col, rc.row, rc.col);
             if (rpel) clearTrailClasses(rpel);
           }
-          // 回访点按新进入方向更新箭头
+          // 回访点保留轨迹高亮
           var revisitEl = getRenderCell(cell.row, cell.col);
           if (revisitEl) {
             clearTrailClasses(revisitEl);
             revisitEl.classList.add("maze-trail");
-            if (dir !== -1) revisitEl.classList.add("maze-trail-dir" + dir);
           }
         }
         state.trail[existingIdx].dir = dir;
@@ -1002,10 +991,7 @@
         state.trail.push({ row: cell.row, col: cell.col, dir: dir });
         if (state.showTrail) {
           var el = getRenderCell(cell.row, cell.col);
-          if (el) {
-            el.classList.add("maze-trail");
-            el.classList.add("maze-trail-dir" + dir);
-          }
+          if (el) el.classList.add("maze-trail");
           // Also mark passage from previous cell
           var pel = getPassageCell(prev.row, prev.col, cell.row, cell.col);
           if (pel) pel.classList.add("maze-trail");
@@ -1060,13 +1046,25 @@
 
   /* ===== Timer ===== */
 
-  function restartTimer() {
-    window.clearInterval(state.timerId);
-    state.pauseOffset = 0;
-    state.startedAt = Date.now();
+  function startTimerLoop() {
+    if (state.timerId !== null) {
+      window.clearInterval(state.timerId);
+      state.timerId = null;
+    }
     state.timerId = window.setInterval(() => {
+      if (state.ended) return;
       els.timer.textContent = formatTime(elapsedSeconds());
     }, 500);
+  }
+
+  function restartTimer() {
+    if (state.timerId !== null) {
+      window.clearInterval(state.timerId);
+      state.timerId = null;
+    }
+    state.pauseOffset = 0;
+    state.startedAt = Date.now();
+    startTimerLoop();
     els.timer.textContent = "00:00";
   }
 

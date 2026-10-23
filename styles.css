@@ -253,54 +253,9 @@ h1 {
   transition: background 80ms ease;
 }
 
-/* Persistent trail — continuous line with direction arrows */
+/* Persistent trail — 连续金色轨迹（无方向箭头） */
 .maze-path.maze-trail {
   background: #d4bc80;
-}
-
-/* Arrow indicator in direction of travel */
-.maze-path.maze-trail::after {
-  content: "";
-  position: absolute;
-  width: 0;
-  height: 0;
-  z-index: 2;
-}
-
-.maze-trail-dir0::after { /* up */
-  top: 4px;
-  left: 50%;
-  transform: translateX(-50%);
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-bottom: 7px solid #9a7a40;
-}
-
-.maze-trail-dir1::after { /* right */
-  top: 50%;
-  right: 4px;
-  transform: translateY(-50%);
-  border-top: 5px solid transparent;
-  border-bottom: 5px solid transparent;
-  border-left: 7px solid #9a7a40;
-}
-
-.maze-trail-dir2::after { /* down */
-  bottom: 4px;
-  left: 50%;
-  transform: translateX(-50%);
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-top: 7px solid #9a7a40;
-}
-
-.maze-trail-dir3::after { /* left */
-  top: 50%;
-  left: 4px;
-  transform: translateY(-50%);
-  border-top: 5px solid transparent;
-  border-bottom: 5px solid transparent;
-  border-right: 7px solid #9a7a40;
 }
 
 /* Dead end flash */

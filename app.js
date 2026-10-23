@@ -474,19 +474,6 @@
       { dr: 0, dc: -1, wall: 3, opp: 1 },
     ];
 
-    // Force-open at least 2 interior walls from entrance to create a fork
-    var intDirs = dirs.filter(function (d) {
-      var nr = entRow + d.dr, nc = entCol + d.dc;
-      return nr >= 0 && nr < height && nc >= 0 && nc < width;
-    });
-    var entDirs = shuffle(intDirs, rng);
-    for (var ei = 0; ei < 2 && ei < entDirs.length; ei++) {
-      var d = entDirs[ei];
-      var nr = entRow + d.dr, nc = entCol + d.dc;
-      grid[entRow][entCol].walls[d.wall] = false;
-      grid[nr][nc].walls[d.opp] = false;
-    }
-
     // Iterative DFS using explicit stack (avoids recursion depth limits)
     grid[entRow][entCol].visited = true;
     var stack = [{ row: entRow, col: entCol }];
@@ -521,7 +508,106 @@
       }
     }
 
+    // DFS 生成树中入口度数必为 1；补一条边成环，再沿环删中间一条边恢复生成树，
+    // 既保证入口有 2 个方向，又保持全迷宫唯一解。
+    ensureEntranceFork(grid, width, height, entRow, entCol, rng);
+
     return grid;
+  }
+
+  function getGridNeighbors(grid, width, height, row, col) {
+    var result = [];
+    for (var d = 0; d < 4; d++) {
+      if (grid[row][col].walls[d]) continue;
+      var nr = row + DR[d];
+      var nc = col + DC[d];
+      if (nr < 0 || nr >= height || nc < 0 || nc >= width) continue;
+      result.push({ row: nr, col: nc, dir: d });
+    }
+    return result;
+  }
+
+  // 生成树内唯一路径（BFS），保证边数最少、结果确定
+  function findTreePath(grid, width, height, from, to) {
+    var startKey = from.row + "," + from.col;
+    var endKey = to.row + "," + to.col;
+    var prev = {};
+    prev[startKey] = null;
+    var queue = [from];
+
+    while (queue.length > 0) {
+      var cur = queue.shift();
+      if (cur.row === to.row && cur.col === to.col) break;
+      var neighbors = getGridNeighbors(grid, width, height, cur.row, cur.col);
+      for (var i = 0; i < neighbors.length; i++) {
+        var n = neighbors[i];
+        var key = n.row + "," + n.col;
+        if (Object.prototype.hasOwnProperty.call(prev, key)) continue;
+        prev[key] = cur;
+        queue.push({ row: n.row, col: n.col });
+      }
+    }
+
+    if (!Object.prototype.hasOwnProperty.call(prev, endKey)) return null;
+
+    var path = [];
+    var node = { row: to.row, col: to.col };
+    while (node) {
+      path.unshift(node);
+      node = prev[node.row + "," + node.col];
+    }
+    return path;
+  }
+
+  function ensureEntranceFork(grid, width, height, entRow, entCol, rng) {
+    var open = getGridNeighbors(grid, width, height, entRow, entCol);
+    if (open.length >= 2) return;
+
+    var closed = [];
+    for (var d = 0; d < 4; d++) {
+      var nr = entRow + DR[d];
+      var nc = entCol + DC[d];
+      if (nr < 0 || nr >= height || nc < 0 || nc >= width) continue;
+      if (grid[entRow][entCol].walls[d]) closed.push({ row: nr, col: nc });
+    }
+    if (open.length === 0 || closed.length === 0) return;
+
+    var treeNeighbor = open[0];
+    var candidates = shuffle(closed, rng);
+    var best = null;
+
+    // 优先选环足够长的候选，避免删边后入口旁出现 1 格死路
+    for (var i = 0; i < candidates.length; i++) {
+      var path = findTreePath(grid, width, height, treeNeighbor, candidates[i]);
+      if (!path) continue;
+      var edges = path.length - 1;
+      if (!best || edges > best.edges) {
+        best = { v: candidates[i], path: path, edges: edges };
+      }
+      if (edges >= 3) break;
+    }
+    if (!best || best.edges < 2) return;
+
+    // 打开 入口→v
+    for (var d2 = 0; d2 < 4; d2++) {
+      if (entRow + DR[d2] === best.v.row && entCol + DC[d2] === best.v.col) {
+        grid[entRow][entCol].walls[d2] = false;
+        grid[best.v.row][best.v.col].walls[(d2 + 2) % 4] = false;
+        break;
+      }
+    }
+
+    // 沿环删中间一条边，恢复生成树（唯一解）
+    var cut = Math.floor(best.edges / 2);
+    var a = best.path[cut];
+    var b = best.path[cut + 1];
+    for (var d3 = 0; d3 < 4; d3++) {
+      if (a.row + DR[d3] === b.row && a.col + DC[d3] === b.col) {
+        grid[a.row][a.col].walls[d3] = true;
+        grid[b.row][b.col].walls[(d3 + 2) % 4] = true;
+        break;
+      }
+    }
   }
 
   /* ===== Maze Rendering ===== */
